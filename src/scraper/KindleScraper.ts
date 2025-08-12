@@ -16,16 +16,19 @@ export class KindleScraper extends BaseScraper {
     });
 
     this.context = await this.browser.newContext({
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       viewport: this.config.viewport,
-      extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' }
+      extraHTTPHeaders: {
+        'Accept-Language': 'ja-JP,ja;q=0.9,en-US,en;q=0.8'
+      }
     });
 
     this.page = await this.context.newPage();
     
     await this.page.addInitScript(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+      Object.defineProperty(navigator, 'languages', { get: () => ['ja-JP', 'ja', 'en-US', 'en'] });
     });
   }
 
