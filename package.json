@@ -7,7 +7,8 @@
     "build": "tsc",
     "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "playwright install chromium firefox"
   },
   "repository": {
     "type": "git",
@@ -28,6 +29,9 @@
     "playwright": "^1.54.2",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "screenshot-desktop": "^1.15.1",
+    "sharp": "^0.34.3",
+    "tesseract.js": "^6.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   }

@@ -12,30 +12,47 @@ Extract text from Kindle Cloud Reader and generate summaries in Markdown and Key
 
 ## Installation
 
+### Standard Installation (macOS)
 ```bash
 npm install
 npm run build
 ```
 
+### Docker Installation (Recommended for restricted books)
+```bash
+docker-compose build
+```
+
 ## Usage
 
+### Standard Usage (macOS)
 ```bash
 # Extract and generate both Markdown and Keynote formats
 npm run dev -- extract -u "https://read.amazon.com/kp/embed?asin=YOUR_BOOK_ASIN"
 
 # Generate only Markdown
 npm run dev -- extract -u "https://read.amazon.com/kp/embed?asin=YOUR_BOOK_ASIN" -f markdown
-
-# Generate only Keynote
-npm run dev -- extract -u "https://read.amazon.com/kp/embed?asin=YOUR_BOOK_ASIN" -f keynote
-
-# Specify output directory
-npm run dev -- extract -u "URL" -o ./my-output -f both
 ```
+
+### Docker Usage (For restricted books)
+```bash
+# Run with Docker (recommended for books that won't open in browser)
+./docker-run.sh "https://read.amazon.com/kp/embed?asin=YOUR_BOOK_ASIN"
+
+# Or manually with docker-compose
+docker-compose run --rm kindle-scraper npm run dev -- extract -u "URL" -f both
+```
+
+See [DOCKER_GUIDE.md](./DOCKER_GUIDE.md) for detailed Docker instructions.
 
 ## Important Notes
 
 ⚠️ **Legal Disclaimer**: This tool is intended for use with books you own or have authored. Please respect copyright laws and Amazon's Terms of Service.
+
+### Known Limitations
+
+- **macOS**: Many books are restricted and show "We are sorry. Kindle can't open this book" error
+- **Solution**: Use Docker approach which runs in Linux environment where restrictions are less common
 
 ### Browser Setup
 

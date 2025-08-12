@@ -21,10 +21,10 @@ export interface Chapter {
 }
 
 export class KindleScraper {
-  private browser: Browser | null = null;
-  private context: BrowserContext | null = null;
-  private page: Page | null = null;
-  private config: any;
+  protected browser: Browser | null = null;
+  protected context: BrowserContext | null = null;
+  protected page: Page | null = null;
+  protected config: any;
 
   constructor() {
     try {
