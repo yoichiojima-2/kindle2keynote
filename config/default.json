@@ -1,0 +1,21 @@
+{
+  "scraper": {
+    "headless": true,
+    "timeout": 30000,
+    "userDataDir": "./profile",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    }
+  },
+  "processor": {
+    "chunkSize": 2000,
+    "summaryTypes": ["brief", "detailed", "chapter"]
+  },
+  "output": {
+    "formats": ["markdown", "keynote"],
+    "templates": {
+      "keynote": "default.key"
+    }
+  }
+}
