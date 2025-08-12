@@ -59,7 +59,7 @@ export class KindleScraper {
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       viewport: this.config.scraper.viewport,
       extraHTTPHeaders: {
-        'Accept-Language': 'en-US,en;q=0.9'
+        'Accept-Language': 'ja-JP,ja;q=0.9,en-US,en;q=0.8'
       }
     });
 
@@ -76,9 +76,9 @@ export class KindleScraper {
         get: () => [1, 2, 3, 4, 5],
       });
       
-      // Mock languages
+      // Mock languages (prioritize Japanese)
       Object.defineProperty(navigator, 'languages', {
-        get: () => ['en-US', 'en'],
+        get: () => ['ja-JP', 'ja', 'en-US', 'en'],
       });
     });
   }
