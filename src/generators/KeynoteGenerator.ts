@@ -2,8 +2,7 @@ import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { ExtractedContent } from '../scraper/KindleScraper';
-import { ProcessedContent } from '../processor/TextProcessor';
+import { ExtractedContent, ProcessedContent } from '../types';
 
 const execAsync = promisify(exec);
 

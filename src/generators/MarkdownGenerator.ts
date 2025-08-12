@@ -1,7 +1,6 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import { ExtractedContent } from '../scraper/KindleScraper';
-import { ProcessedContent } from '../processor/TextProcessor';
+import { ExtractedContent, ProcessedContent } from '../types';
 
 export class MarkdownGenerator {
   async generate(

@@ -1,25 +1,4 @@
-import { ExtractedContent, Chapter } from '../scraper/KindleScraper';
-
-export interface ProcessedContent {
-  summary: ContentSummary;
-  chapters: ProcessedChapter[];
-  keyPoints: string[];
-  themes: string[];
-}
-
-export interface ContentSummary {
-  brief: string;
-  detailed: string;
-  executive: string;
-}
-
-export interface ProcessedChapter {
-  title: string;
-  summary: string;
-  keyPoints: string[];
-  wordCount: number;
-  mainTopics: string[];
-}
+import { ExtractedContent, Chapter, ProcessedContent, ContentSummary, ProcessedChapter } from '../types';
 
 export class TextProcessor {
   private chunkSize: number;
@@ -51,7 +30,7 @@ export class TextProcessor {
     
     for (const chapter of chapters) {
       const processed: ProcessedChapter = {
-        title: chapter.title,
+        ...chapter,
         summary: await this.summarizeChapter(chapter.content),
         keyPoints: this.extractKeyPoints(chapter.content),
         wordCount: this.countWords(chapter.content),
