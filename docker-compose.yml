@@ -1,7 +1,11 @@
 services:
-  kindle-scraper:
+  app:
     build: .
     container_name: kindle2keynote
     volumes:
-      - .:/app
+      - ./output:/app/output
+      - ./profile:/app/profile
+    environment:
+      - HEADLESS=${HEADLESS:-true}
+    stdin_open: true
     tty: true

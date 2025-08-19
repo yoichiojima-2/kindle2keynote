@@ -1,107 +1,70 @@
 # Kindle2Keynote
 
-Extract text from Kindle Cloud Reader and generate summaries in Markdown and Keynote formats.
+Extract and process text from Kindle Cloud Reader books.
 
-## Features
+## Prerequisites
 
-- 🌐 Extracts text from Kindle Cloud Reader in browser
-- 🧠 AI-powered content analysis and summarization
-- 📝 Generates structured Markdown documents
-- 🎯 Creates Keynote presentation outlines
-- 📊 Identifies key points, themes, and topics
-
-## Installation
-
-### Standard Installation (macOS)
-```bash
-npm install
-npm run build
-```
-
-### Docker Installation (Recommended for restricted books)
-```bash
-docker-compose build
-```
+- Docker and Docker Compose
+- A book in your Kindle library
 
 ## Usage
 
-### Standard Usage (macOS)
+### Quick Start
+
 ```bash
-# Extract and generate both Markdown and Keynote formats
-npm run dev -- extract -u "https://read.amazon.com/kp/embed?asin=YOUR_BOOK_ASIN"
+# Build the Docker image
+make build
+
+# Extract a book
+./run.sh -u "https://read.amazon.com/?asin=YOUR_BOOK_ID"
+```
+
+### Options
+
+- `-u, --url <url>` - Kindle book URL (required)
+- `-f, --format <type>` - Output format: `markdown`, `keynote`, or `both` (default: both)
+- `-o, --output <path>` - Output directory (default: ./output)
+
+### Examples
+
+```bash
+# Extract with both formats
+./run.sh -u "https://read.amazon.com/?asin=B123456789"
 
 # Generate only Markdown
-npm run dev -- extract -u "https://read.amazon.com/kp/embed?asin=YOUR_BOOK_ASIN" -f markdown
+./run.sh -u "https://read.amazon.com/?asin=B123456789" -f markdown
+
+# Custom output directory
+./run.sh -u "https://read.amazon.com/?asin=B123456789" -o ./my-output
 ```
 
-### Docker Usage (For restricted books)
-```bash
-# Run with Docker (recommended for books that won't open in browser)
-./docker-run.sh "https://read.amazon.com/kp/embed?asin=YOUR_BOOK_ASIN"
-
-# Or manually with docker-compose
-docker-compose run --rm kindle-scraper npm run dev -- extract -u "URL" -f both
-```
-
-See [DOCKER_GUIDE.md](./DOCKER_GUIDE.md) for detailed Docker instructions.
-
-## Important Notes
-
-⚠️ **Legal Disclaimer**: This tool is intended for use with books you own or have authored. Please respect copyright laws and Amazon's Terms of Service.
-
-### Known Limitations
-
-- **macOS**: Many books are restricted and show "We are sorry. Kindle can't open this book" error
-- **Solution**: Use Docker approach which runs in Linux environment where restrictions are less common
-
-### Browser Setup
-
-The first time you run the tool, it may prompt for Amazon login. The browser session will be saved for future use.
-
-## Output Formats
-
-### Markdown (.md)
-- Structured document with table of contents
-- Executive summary and key points
-- Chapter-by-chapter analysis
-- Full extracted text
-
-### Keynote (.key/.pptx/.txt)
-- Presentation-ready slides
-- Key points and themes
-- Chapter summaries
-- Fallback text outline if conversion tools unavailable
-
-## Requirements
-
-- Node.js 18+
-- macOS (for Keynote generation)
-- Optional: `pandoc` or `md2keynote` for enhanced Keynote conversion
-
-## Project Structure
-
-```
-src/
-├── scraper/        # Browser automation and text extraction
-├── processor/      # Content analysis and summarization
-├── generators/     # Output format generators
-├── cli/           # Command-line interface
-└── utils/         # Shared utilities
-
-config/            # Configuration files
-templates/         # Keynote templates
-output/           # Generated files
-```
-
-## Development
+### Using Make commands
 
 ```bash
-# Run in development mode
-npm run dev
+# Build Docker image
+make build
 
-# Build for production
-npm run build
+# Run extraction with custom arguments
+make extract ARGS='-u "URL" -f markdown'
 
-# Run built version
-npm start
+# Open shell in container
+make shell
+
+# Show help
+make help
 ```
+
+## Output
+
+The tool generates:
+- **Markdown**: Structured document with chapter summaries and full text
+- **Keynote**: Presentation outline and slides
+
+Files are saved to the `output/` directory.
+
+## Notes
+
+- First run will prompt for Amazon login
+- Login session is saved for subsequent runs
+- Supports both amazon.com and amazon.co.jp
+

@@ -9,7 +9,7 @@ export class KindleScraper extends BaseScraper {
 
   constructor() {
     super();
-    this.profileDir = join(__dirname, '../../profile');
+    this.profileDir = '/app/profile';
     this.cookiesFile = join(this.profileDir, 'cookies.json');
     
     if (!existsSync(this.profileDir)) {
@@ -18,7 +18,7 @@ export class KindleScraper extends BaseScraper {
   }
 
   async initialize(): Promise<void> {
-    console.log('🐳 Initializing Docker-optimized browser...');
+    console.log('🚀 Initializing browser...');
     
     this.browser = await firefox.launch({
       headless: this.config.headless,
@@ -28,8 +28,9 @@ export class KindleScraper extends BaseScraper {
     this.context = await this.browser.newContext({
       userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
       viewport: this.config.viewport,
-      locale: 'en-US',
-      ignoreHTTPSErrors: true
+      locale: 'ja-JP',  // Changed to Japanese locale for better compatibility
+      ignoreHTTPSErrors: true,
+      acceptDownloads: true
     });
 
     await this.loadSavedSession();
@@ -71,15 +72,29 @@ export class KindleScraper extends BaseScraper {
   private async ensureLoggedIn(): Promise<void> {
     if (!this.page) return;
     
-    await this.page.goto('https://www.amazon.com', { waitUntil: 'networkidle' });
+    // Always use Amazon Japan for Japanese users
+    const amazonDomain = 'https://www.amazon.co.jp';
+    
+    await this.page.goto(amazonDomain, { waitUntil: 'networkidle' });
     
     const isLoggedIn = await this.page.evaluate(() => {
-      return document.querySelector('#nav-link-accountList-nav-line-1')?.textContent?.includes('Hello') || false;
+      // Check for both English and Japanese login indicators
+      const accountElement = document.querySelector('#nav-link-accountList-nav-line-1');
+      return accountElement?.textContent?.includes('Hello') || 
+             accountElement?.textContent?.includes('こんにちは') || 
+             false;
     });
 
     if (!isLoggedIn) {
       console.log('📝 Please login to Amazon (2 minutes timeout)...');
-      await this.page.waitForSelector('#nav-link-accountList-nav-line-1:has-text("Hello")', { timeout: 120000 });
+      console.log(`🌐 Domain: ${amazonDomain}`);
+      
+      // Wait for login - accept both English and Japanese indicators
+      await this.page.waitForFunction(() => {
+        const accountElement = document.querySelector('#nav-link-accountList-nav-line-1');
+        return accountElement?.textContent?.includes('Hello') || 
+               accountElement?.textContent?.includes('こんにちは');
+      }, { timeout: 120000 });
       
       const cookies = await this.context!.cookies();
       writeFileSync(this.cookiesFile, JSON.stringify(cookies, null, 2));
@@ -89,7 +104,7 @@ export class KindleScraper extends BaseScraper {
 
 
   async cleanup(): Promise<void> {
-    console.log('🧹 Cleaning up Docker browser resources...');
+    console.log('🧹 Cleaning up browser resources...');
     
     // Save cookies before cleanup
     if (this.context) {

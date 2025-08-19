@@ -1,11 +1,11 @@
 build:
 	docker compose build
 
-up:
-	docker compose up -d
+extract:
+	docker compose run --rm app npm run extract -- $(ARGS)
 
-in:
-	docker compose exec kindle-scraper bash
+shell:
+	docker compose run --rm app bash
 
-scrap:
-	docker compose run kindle-scraper npm start help
+help:
+	docker compose run --rm app npm start help

@@ -30,10 +30,54 @@ export abstract class BaseScraper {
   protected async waitForReader(): Promise<void> {
     if (!this.page) return;
     
-    await this.page.waitForSelector(
-      '.kp-reading-area, .kp-page, #KindleReaderIFrame, .kp-reader, #kindleReader_content', 
-      { timeout: this.config.timeout }
-    );
+    try {
+      await this.page.waitForSelector(
+        '.kp-reading-area, .kp-page, #KindleReaderIFrame, .kp-reader, #kindleReader_content', 
+        { timeout: this.config.timeout }
+      );
+    } catch (error) {
+      // Debug: Show what page we're actually on
+      const url = this.page.url();
+      const title = await this.page.title();
+      console.log(`🔍 Current page: ${title}`);
+      console.log(`📍 URL: ${url}`);
+      
+      // Debug: List available elements on the page
+      const availableElements = await this.page.evaluate(() => {
+        const elements: string[] = [];
+        const selectors = [
+          '[class*="kp"]', '[class*="reader"]', '[class*="page"]', 
+          '[data-testid*="page"]', '[data-testid*="content"]',
+          'iframe', 'main', 'article', '.content', '#content'
+        ];
+        
+        for (const selector of selectors) {
+          const found = document.querySelectorAll(selector);
+          if (found.length > 0) {
+            elements.push(`${selector}: ${found.length} found`);
+          }
+        }
+        return elements.slice(0, 10); // Limit output
+      });
+      
+      console.log('🔍 Available elements on page:');
+      availableElements.forEach(elem => console.log(`   ${elem}`));
+      
+      // Check for common login/error indicators
+      const hasLoginForm = await this.page.locator('input[type="email"], input[type="password"], #signInSubmit').count() > 0;
+      const hasErrorMessage = await this.page.locator('.a-alert-error, .kp-error-message, .error').count() > 0;
+      
+      if (hasLoginForm) {
+        console.log('🔐 Login page detected - please login manually');
+        console.log('⏳ Waiting 120 seconds for manual login...');
+        await this.page.waitForURL('**/read.amazon.com/**', { timeout: 120000 });
+      } else if (hasErrorMessage) {
+        const errorText = await this.page.locator('.a-alert-error, .kp-error-message, .error').first().textContent();
+        console.log(`❌ Error on page: ${errorText}`);
+      }
+      
+      throw error;
+    }
   }
 
   async extractBookMetadata(): Promise<BookMetadata> {

@@ -5,10 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "playwright install chromium firefox"
+    "extract": "node dist/index.js extract"
   },
   "repository": {
     "type": "git",
@@ -23,16 +21,11 @@
   },
   "homepage": "https://github.com/yoichiojima-2/kindle2keynote#readme",
   "dependencies": {
-    "@playwright/test": "^1.54.2",
     "@types/node": "^24.2.1",
     "commander": "^14.0.0",
     "playwright": "^1.54.2",
-    "playwright-extra": "^4.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "screenshot-desktop": "^1.15.1",
     "sharp": "^0.34.3",
     "tesseract.js": "^6.0.1",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   }
 }

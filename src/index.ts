@@ -5,26 +5,20 @@ import { KindleScraper } from './scraper/KindleScraper';
 import { TextProcessor } from './processor/TextProcessor';
 import { MarkdownGenerator } from './generators/MarkdownGenerator';
 import { KeynoteGenerator } from './generators/KeynoteGenerator';
-import { OutputFormat } from './types';
-import { isDocker } from './config';
 import { mkdirSync } from 'fs';
 
 program
   .name('kindle2keynote')
-  .description('Extract text from Kindle Cloud Reader and generate summaries')
+  .description('Extract text from Kindle Cloud Reader')
   .version('1.0.0');
 
 program
   .command('extract')
   .description('Extract text from a Kindle book')
-  .option('-u, --url <url>', 'Kindle book URL')
-  .option('-o, --output <path>', 'Output directory', './output')
+  .requiredOption('-u, --url <url>', 'Kindle book URL')
+  .option('-o, --output <path>', 'Output directory', '/app/output')
   .option('-f, --format <format>', 'Output format (markdown|keynote|both)', 'both')
   .action(async (options) => {
-    if (!options.url) {
-      console.error('❌ Error: Please provide a Kindle book URL with -u or --url');
-      process.exit(1);
-    }
 
     console.log('🚀 Starting Kindle2Keynote...');
     console.log(`📚 Book URL: ${options.url}`);
@@ -38,9 +32,6 @@ program
       // Step 1: Extract content from Kindle
       console.log('\n🔍 Step 1: Extracting content from Kindle...');
       const scraper = new KindleScraper();
-      if (isDocker()) {
-        console.log('🐳 Running in Docker environment');
-      }
       const extractedContent = await scraper.extractBook(options.url);
       
       // Step 2: Process and analyze content
@@ -95,41 +86,21 @@ program
 
 program
   .command('help')
-  .description('Show detailed usage instructions')
+  .description('Show usage instructions')
   .action(() => {
     console.log(`
-📚 Kindle2Keynote - Extract and summarize Kindle books
+📚 Kindle2Keynote
 
 USAGE:
-  npm run dev -- extract -u "KINDLE_URL" [options]
+  docker compose run app npm run extract -- -u "URL" [options]
 
-EXAMPLES:
-  # Extract with both formats
-  npm run dev -- extract -u "https://read.amazon.com/kp/embed?asin=B123456789"
-  
-  # Generate only Markdown
-  npm run dev -- extract -u "URL" -f markdown
-  
-  # Custom output directory
-  npm run dev -- extract -u "URL" -o ./my-output
+OPTIONS:
+  -u, --url <url>      Kindle book URL (required)
+  -f, --format <type>  Output format: markdown|keynote|both (default: both)
+  -o, --output <path>  Output directory (default: /app/output)
 
-GETTING KINDLE URL:
-  1. Go to read.amazon.com
-  2. Open your book
-  3. Copy the URL from address bar
-  4. Use the full URL starting with https://read.amazon.com/
-
-OUTPUT FORMATS:
-  markdown - Structured document with summaries and full text
-  keynote  - Presentation outline and slides
-  both     - Generate both formats (default)
-
-REQUIREMENTS:
-  - Book must be in your Kindle library
-  - Intended for books you own or have authored
-  - Respects copyright laws and Amazon ToS
-
-For more details, see instructions.md
+EXAMPLE:
+  docker compose run app npm run extract -- -u "https://read.amazon.com/?asin=B123456789"
 `);
   });
 
