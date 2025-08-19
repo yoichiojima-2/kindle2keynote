@@ -41,11 +41,3 @@ RUN npm run build
 
 # Create output directory
 RUN mkdir -p /app/output
-
-# Set environment variables for better browser compatibility
-ENV DISPLAY=:99
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV DOCKER_ENV=true
-
-# Command to run the application
-CMD ["npm", "start"]

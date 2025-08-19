@@ -1,21 +1,7 @@
-version: '3.8'
-
 services:
   kindle-scraper:
     build: .
     container_name: kindle2keynote
     volumes:
-      - ./output:/app/output
-      - ./config:/app/config
-      - ./profile:/app/profile  # Persist browser profile for login
-    environment:
-      - DISPLAY=:99
-      - NODE_ENV=production
-    network_mode: host
-    stdin_open: true
+      - .:/app
     tty: true
-    command: >
-      sh -c "
-        Xvfb :99 -screen 0 1920x1080x24 &
-        npm start
-      "

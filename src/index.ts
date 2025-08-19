@@ -2,7 +2,6 @@
 
 import { program } from 'commander';
 import { KindleScraper } from './scraper/KindleScraper';
-import { DockerKindleScraper } from './scraper/DockerKindleScraper';
 import { TextProcessor } from './processor/TextProcessor';
 import { MarkdownGenerator } from './generators/MarkdownGenerator';
 import { KeynoteGenerator } from './generators/KeynoteGenerator';
@@ -38,9 +37,9 @@ program
       
       // Step 1: Extract content from Kindle
       console.log('\n🔍 Step 1: Extracting content from Kindle...');
-      const scraper = isDocker() ? new DockerKindleScraper() : new KindleScraper();
+      const scraper = new KindleScraper();
       if (isDocker()) {
-        console.log('🐳 Using Docker-optimized scraper');
+        console.log('🐳 Running in Docker environment');
       }
       const extractedContent = await scraper.extractBook(options.url);
       
