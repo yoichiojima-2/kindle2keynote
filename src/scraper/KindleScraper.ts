@@ -43,6 +43,21 @@ export class KindleScraper extends BaseScraper {
   }
 
   async navigateToKindle(url: string): Promise<void> {
+    // For shared URLs, skip login and go directly
+    if (url.includes('kshare')) {
+      console.log('📚 Shared Kindle URL detected, navigating directly');
+      if (!this.page) throw new Error('Browser not initialized');
+      
+      await this.page.goto(url, { 
+        waitUntil: 'networkidle', 
+        timeout: this.config.timeout 
+      });
+      
+      await this.waitForReader();
+      console.log('✅ Kindle page loaded successfully');
+      return;
+    }
+    
     await this.ensureLoggedIn();
     await super.navigateToKindle(url);
     
@@ -71,6 +86,13 @@ export class KindleScraper extends BaseScraper {
 
   private async ensureLoggedIn(): Promise<void> {
     if (!this.page) return;
+    
+    // Check if we're already on a Kindle page (shared URL)
+    const currentUrl = this.page.url();
+    if (currentUrl.includes('read.amazon.com')) {
+      console.log('📚 Already on Kindle page, skipping login check');
+      return;
+    }
     
     // Always use Amazon Japan for Japanese users
     const amazonDomain = 'https://www.amazon.co.jp';
