@@ -10,6 +10,10 @@ Convert PDF ebooks into Marp presentation slides using AI.
 - LLM-based conversion to Marp format using Claude Sonnet
 - CLI tool with multiple presentation styles
 
+## current work
+
+- Target book: `assets/books/` (pages 66-100)
+
 ## development guidelines
 
 - Use `uv` for dependency management
