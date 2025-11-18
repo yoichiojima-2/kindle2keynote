@@ -49,4 +49,4 @@ extracted_text/
 test_pdfs/
 
 # books
-assets/books/**
+assets/books/**node_modules/

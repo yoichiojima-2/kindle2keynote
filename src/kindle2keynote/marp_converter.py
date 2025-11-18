@@ -36,18 +36,22 @@ class MarpConverter:
         """
         prompt = self._build_conversion_prompt(text_content, style, language, target_slides)
 
-        message = self.client.messages.create(
+        # Use streaming for large outputs (speaker notes)
+        full_response = ""
+        with self.client.messages.stream(
             model="claude-sonnet-4-20250514",
-            max_tokens=16000,
+            max_tokens=32000,  # Increased for speaker notes
             messages=[
                 {
                     "role": "user",
                     "content": prompt
                 }
             ]
-        )
+        ) as stream:
+            for text in stream.text_stream:
+                full_response += text
 
-        return message.content[0].text
+        return full_response
 
     def _build_conversion_prompt(self, text_content: str, style: str, language: str, target_slides: int) -> str:
         """Build the prompt for Claude to convert text to Marp."""
@@ -97,6 +101,18 @@ Instructions:
 12. {detail_guide}
 13. Preserve specific examples, data points, frameworks, and explanations from source
 14. Each slide should be able to stand alone as reference material
+15. **Add speaker notes**: After each slide's content, add HTML comments with speaker notes using this format:
+    ```
+    <!--
+    Speaker notes here - additional context, talking points, examples to mention verbally
+    -->
+    ```
+    Speaker notes should include:
+    - Key talking points for the presenter
+    - Additional context or background information not on the slide
+    - Examples or stories to illustrate the points
+    - Potential questions from the audience and suggested answers
+    - Transitions to the next slide
 
 Marp frontmatter should include:
 ```
@@ -104,13 +120,26 @@ Marp frontmatter should include:
 marp: true
 theme: default
 paginate: true
+style: |
+  section {{
+    font-size: 20px;
+  }}
+  h1 {{
+    font-size: 40px;
+  }}
+  h2 {{
+    font-size: 32px;
+  }}
+  h3 {{
+    font-size: 24px;
+  }}
 ---
 ```
 
 Source text:
 {text_content}
 
-Please generate the complete Marp presentation with comprehensive, detailed content:"""
+Please generate the complete Marp presentation with comprehensive, detailed content and helpful speaker notes:"""
 
     def save_marp_file(self, marp_content: str, output_path: str) -> None:
         """Save Marp content to a markdown file."""
