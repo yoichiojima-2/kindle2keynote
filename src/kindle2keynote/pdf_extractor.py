@@ -6,7 +6,42 @@ import fitz  # PyMuPDF
 import pdfplumber
 import re
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
+from dataclasses import dataclass
+
+
+# Table validation constants
+MIN_TABLE_ROWS = 4
+MIN_CONTENT_DENSITY = 0.4
+MIN_AVG_CELL_LENGTH = 15
+MIN_ROW_FILL_RATE = 0.4
+
+
+@dataclass
+class TableStatistics:
+    """Statistics for table validation."""
+    non_empty_cells: int
+    total_cells: int
+    total_text_length: int
+    non_empty_rows: int
+    cells_per_row: List[int]
+
+    @property
+    def content_density(self) -> float:
+        """Ratio of non-empty cells to total cells."""
+        return self.non_empty_cells / self.total_cells if self.total_cells > 0 else 0.0
+
+    @property
+    def avg_cell_length(self) -> float:
+        """Average character length per non-empty cell."""
+        return self.total_text_length / self.non_empty_cells if self.non_empty_cells > 0 else 0.0
+
+    def avg_row_fill_rate(self, num_columns: int) -> float:
+        """Average ratio of filled cells per row."""
+        if not self.cells_per_row or num_columns == 0:
+            return 0.0
+        avg_cells = sum(self.cells_per_row) / len(self.cells_per_row)
+        return avg_cells / num_columns
 
 
 class PDFExtractor:
@@ -16,6 +51,26 @@ class PDFExtractor:
         self.pdf_path = Path(pdf_path)
         if not self.pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+    def _get_page_indices(self, total_pages: int, page_range: Optional[Tuple[int, int]]) -> Tuple[int, int]:
+        """
+        Convert 1-indexed page range to 0-indexed start and end indices.
+
+        Args:
+            total_pages: Total number of pages in the document
+            page_range: Optional tuple of (start_page, end_page) (1-indexed, inclusive)
+
+        Returns:
+            Tuple of (start_idx, end_idx) for iteration (0-indexed)
+        """
+        if page_range:
+            start_page, end_page = page_range
+            start_idx = max(0, start_page - 1)
+            end_idx = min(total_pages, end_page)
+        else:
+            start_idx = 0
+            end_idx = total_pages
+        return start_idx, end_idx
 
     def extract_with_pymupdf(self, page_range: Optional[Tuple[int, int]] = None) -> str:
         """
@@ -28,17 +83,7 @@ class PDFExtractor:
         text_content = []
 
         with fitz.open(self.pdf_path) as doc:
-            total_pages = len(doc)
-
-            # Determine page range
-            if page_range:
-                start_page, end_page = page_range
-                # Convert to 0-indexed and validate
-                start_idx = max(0, start_page - 1)
-                end_idx = min(total_pages, end_page)
-            else:
-                start_idx = 0
-                end_idx = total_pages
+            start_idx, end_idx = self._get_page_indices(len(doc), page_range)
 
             for page_idx in range(start_idx, end_idx):
                 page = doc[page_idx]
@@ -64,17 +109,7 @@ class PDFExtractor:
         text_content = []
 
         with pdfplumber.open(self.pdf_path) as pdf:
-            total_pages = len(pdf.pages)
-
-            # Determine page range
-            if page_range:
-                start_page, end_page = page_range
-                # Convert to 0-indexed and validate
-                start_idx = max(0, start_page - 1)
-                end_idx = min(total_pages, end_page)
-            else:
-                start_idx = 0
-                end_idx = total_pages
+            start_idx, end_idx = self._get_page_indices(len(pdf.pages), page_range)
 
             for page_idx in range(start_idx, end_idx):
                 page = pdf.pages[page_idx]
@@ -86,8 +121,7 @@ class PDFExtractor:
                 text = page.extract_text(layout=True, x_tolerance=2, y_tolerance=2)
                 if text and text.strip():
                     # Clean CID codes and page headers from main text
-                    text = self._remove_cid_codes(text)
-                    text = self._remove_page_headers(text)
+                    text = self._clean_text(text)
                     if text.strip():  # Only add if there's content left after cleaning
                         page_content.append(text)
 
@@ -118,15 +152,21 @@ class PDFExtractor:
 
         return "\n\n---\n\n".join(text_content)
 
+    def _normalize_whitespace(self, text: str) -> str:
+        """Normalize whitespace in text."""
+        if not text:
+            return ""
+        # Replace multiple spaces with single space
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
     def _remove_cid_codes(self, text: str) -> str:
         """Remove CID codes that appear in poorly encoded PDFs."""
         if not text:
             return ""
         # Remove (cid:xxxx) patterns
         text = re.sub(r'\(cid:\d+\)', '', text)
-        # Clean up any resulting multiple spaces
-        text = re.sub(r'\s+', ' ', text)
-        return text.strip()
+        return self._normalize_whitespace(text)
 
     def _remove_page_headers(self, text: str) -> str:
         """Remove common page header/footer artifacts."""
@@ -136,16 +176,16 @@ class PDFExtractor:
         text = re.sub(r'PPAARRT[TI]+(?:\s+PPAARRT[TI]+)*', '', text)
         # Remove leftover roman numerals from PART headers (II, III, IV, V, VI, etc.)
         text = re.sub(r'\b(?:I{1,3}|IV|V|VI{1,3}|IX|X)\s+(?:I{1,3}|IV|V|VI{1,3}|IX|X)\s+(?:I{1,3}|IV|V|VI{1,3}|IX|X)', '', text)
-        # Clean up any resulting multiple spaces
-        text = re.sub(r'\s+', ' ', text)
-        return text.strip()
+        return self._normalize_whitespace(text)
 
-    def _is_valid_table(self, table) -> bool:
-        """Check if a table is valid and worth extracting."""
-        if not table or len(table) < 2:  # Need at least header + 1 data row
-            return False
+    def _clean_text(self, text: str) -> str:
+        """Apply all text cleaning operations."""
+        text = self._remove_cid_codes(text)
+        text = self._remove_page_headers(text)
+        return text
 
-        # Count non-empty cells and calculate statistics
+    def _calculate_table_statistics(self, table) -> TableStatistics:
+        """Calculate statistics for table validation."""
         non_empty_cells = 0
         total_cells = 0
         total_text_length = 0
@@ -167,8 +207,17 @@ class PDFExtractor:
                     non_empty_rows += 1
                     cells_per_row.append(row_non_empty)
 
-        # Skip if less than 40% of cells have content (increased from 30%)
-        if total_cells == 0 or (non_empty_cells / total_cells) < 0.4:
+        return TableStatistics(
+            non_empty_cells=non_empty_cells,
+            total_cells=total_cells,
+            total_text_length=total_text_length,
+            non_empty_rows=non_empty_rows,
+            cells_per_row=cells_per_row
+        )
+
+    def _is_valid_table(self, table) -> bool:
+        """Check if a table is valid and worth extracting."""
+        if not table or len(table) < 2:  # Need at least header + 1 data row
             return False
 
         # Skip single-column tables (likely page headers/footers)
@@ -179,24 +228,25 @@ class PDFExtractor:
         if table[0] and len(set(str(cell).strip() for cell in table[0] if cell)) == 1:
             return False
 
-        # Skip tables with very few rows (need at least 4 rows for meaningful tables)
-        if non_empty_rows < 4:
+        # Calculate statistics
+        stats = self._calculate_table_statistics(table)
+
+        # Skip if content density too low
+        if stats.content_density < MIN_CONTENT_DENSITY:
             return False
 
-        # Skip tables where average cell content is too short (fragmented text from diagrams)
-        if non_empty_cells > 0:
-            avg_cell_length = total_text_length / non_empty_cells
-            # If average content per cell is less than 15 characters, likely a diagram
-            if avg_cell_length < 15:
-                return False
+        # Skip tables with very few rows
+        if stats.non_empty_rows < MIN_TABLE_ROWS:
+            return False
+
+        # Skip tables with short average cell content (fragmented text from diagrams)
+        if stats.avg_cell_length < MIN_AVG_CELL_LENGTH:
+            return False
 
         # Skip tables with very sparse rows (diagrams have many empty cells per row)
-        if cells_per_row:
-            avg_cells_per_row = sum(cells_per_row) / len(cells_per_row)
-            num_columns = len(table[0]) if table[0] else 0
-            # If on average less than 40% of columns are filled per row, it's likely a diagram
-            if num_columns > 0 and (avg_cells_per_row / num_columns) < 0.4:
-                return False
+        num_columns = len(table[0]) if table[0] else 0
+        if stats.avg_row_fill_rate(num_columns) < MIN_ROW_FILL_RATE:
+            return False
 
         return True
 
@@ -206,14 +256,10 @@ class PDFExtractor:
             return ""
 
         text = str(cell)
-        # Remove CID codes
-        text = self._remove_cid_codes(text)
         # Replace newlines with spaces
         text = text.replace('\n', ' ')
-        # Replace multiple spaces with single space
-        text = re.sub(r'\s+', ' ', text)
-        # Strip leading/trailing whitespace
-        text = text.strip()
+        # Apply standard text cleaning (CID removal, whitespace normalization)
+        text = self._clean_text(text)
 
         return text
 
