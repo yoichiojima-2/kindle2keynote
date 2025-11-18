@@ -34,8 +34,8 @@ def main():
     parser.add_argument(
         "--extraction-method",
         choices=["auto", "pymupdf", "pdfplumber"],
-        default="auto",
-        help="PDF extraction method (default: auto)"
+        default="pdfplumber",
+        help="PDF extraction method (default: pdfplumber for better table support)"
     )
     parser.add_argument(
         "--save-text",

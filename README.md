@@ -4,8 +4,11 @@ Convert PDF ebooks into Marp presentation slides using AI.
 
 ## Features
 
-- High-quality PDF text extraction using PyMuPDF
-- AI-powered conversion to Marp slide format
+- High-quality PDF text extraction using PyMuPDF and pdfplumber
+- **Table extraction**: Automatically detects and formats tables as Markdown
+- **Image/figure detection**: Identifies pages with images and diagrams
+- AI-powered conversion to Marp slide format using Claude
+- Page range selection for targeted content extraction
 - Preserves document structure and formatting
 
 ## Installation
@@ -38,6 +41,12 @@ python main.py input.pdf output.md
 # With different styles
 uv run main.py input.pdf output.md --style minimal
 uv run main.py input.pdf output.md --style academic
+
+# Extract specific page range (recommended for better table/image detection)
+uv run main.py input.pdf output.md --page-range 10-50
+
+# Use pdfplumber for better table extraction (default)
+uv run main.py input.pdf output.md --extraction-method pdfplumber
 ```
 
 ## Project Structure

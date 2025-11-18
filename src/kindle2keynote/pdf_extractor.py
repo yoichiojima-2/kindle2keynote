@@ -51,13 +51,14 @@ class PDFExtractor:
 
         return "\n\n".join(text_content)
 
-    def extract_with_pdfplumber(self, page_range: Optional[Tuple[int, int]] = None) -> str:
+    def extract_with_pdfplumber(self, page_range: Optional[Tuple[int, int]] = None, extract_tables: bool = True) -> str:
         """
         Extract text using pdfplumber (fallback method).
         Better for complex layouts and tables.
 
         Args:
             page_range: Optional tuple of (start_page, end_page) (1-indexed, inclusive)
+            extract_tables: Whether to extract and format tables separately (default: True)
         """
         text_content = []
 
@@ -77,12 +78,56 @@ class PDFExtractor:
             for page_idx in range(start_idx, end_idx):
                 page = pdf.pages[page_idx]
                 page_num = page_idx + 1
-                text = page.extract_text()
 
+                page_content = []
+
+                # Extract regular text
+                text = page.extract_text()
                 if text and text.strip():
-                    text_content.append(f"--- Page {page_num} ---\n{text}")
+                    page_content.append(text)
+
+                # Extract tables if enabled
+                if extract_tables:
+                    tables = page.extract_tables()
+                    if tables:
+                        page_content.append("\n[TABLES DETECTED ON THIS PAGE]")
+                        for table_idx, table in enumerate(tables, 1):
+                            if table:
+                                page_content.append(f"\n[Table {table_idx}]")
+                                page_content.append(self._format_table_as_markdown(table))
+
+                # Check for images/figures
+                images = page.images
+                if images:
+                    page_content.append(f"\n[IMAGES/FIGURES DETECTED: {len(images)} image(s) on this page]")
+
+                if page_content:
+                    text_content.append(f"--- Page {page_num} ---\n" + "\n".join(page_content))
 
         return "\n\n".join(text_content)
+
+    def _format_table_as_markdown(self, table) -> str:
+        """Format extracted table as markdown."""
+        if not table or len(table) == 0:
+            return ""
+
+        lines = []
+
+        # Process header row
+        if table[0]:
+            header = " | ".join(str(cell) if cell else "" for cell in table[0])
+            lines.append(f"| {header} |")
+            # Add separator
+            separator = " | ".join("---" for _ in table[0])
+            lines.append(f"| {separator} |")
+
+        # Process data rows
+        for row in table[1:]:
+            if row:
+                row_text = " | ".join(str(cell) if cell else "" for cell in row)
+                lines.append(f"| {row_text} |")
+
+        return "\n".join(lines)
 
     def extract(self, method: str = "auto", page_range: Optional[Tuple[int, int]] = None) -> str:
         """
