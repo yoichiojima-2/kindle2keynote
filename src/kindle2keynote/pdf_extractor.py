@@ -4,6 +4,7 @@ High-quality PDF text extraction using PyMuPDF.
 
 import fitz  # PyMuPDF
 import pdfplumber
+import re
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -108,6 +109,21 @@ class PDFExtractor:
 
         return "\n\n---\n\n".join(text_content)
 
+    def _clean_cell_text(self, cell) -> str:
+        """Clean and normalize cell text."""
+        if cell is None:
+            return ""
+
+        text = str(cell)
+        # Replace newlines with spaces
+        text = text.replace('\n', ' ')
+        # Replace multiple spaces with single space
+        text = re.sub(r'\s+', ' ', text)
+        # Strip leading/trailing whitespace
+        text = text.strip()
+
+        return text
+
     def _format_table_as_markdown(self, table) -> str:
         """Format extracted table as markdown."""
         if not table or len(table) == 0:
@@ -115,18 +131,30 @@ class PDFExtractor:
 
         lines = []
 
+        # Clean all cells in the table
+        cleaned_table = []
+        for row in table:
+            if row:
+                cleaned_row = [self._clean_cell_text(cell) for cell in row]
+                # Skip rows that are all empty
+                if any(cell for cell in cleaned_row):
+                    cleaned_table.append(cleaned_row)
+
+        if not cleaned_table:
+            return ""
+
         # Process header row
-        if table[0]:
-            header = " | ".join(str(cell) if cell else "" for cell in table[0])
+        if cleaned_table[0]:
+            header = " | ".join(cell for cell in cleaned_table[0])
             lines.append(f"| {header} |")
             # Add separator
-            separator = " | ".join("---" for _ in table[0])
+            separator = " | ".join("---" for _ in cleaned_table[0])
             lines.append(f"| {separator} |")
 
         # Process data rows
-        for row in table[1:]:
+        for row in cleaned_table[1:]:
             if row:
-                row_text = " | ".join(str(cell) if cell else "" for cell in row)
+                row_text = " | ".join(cell for cell in row)
                 lines.append(f"| {row_text} |")
 
         return "\n".join(lines)
