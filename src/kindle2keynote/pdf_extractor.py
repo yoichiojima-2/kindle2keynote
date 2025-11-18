@@ -85,9 +85,11 @@ class PDFExtractor:
                 # Extract regular text with layout preservation for better character mapping
                 text = page.extract_text(layout=True, x_tolerance=2, y_tolerance=2)
                 if text and text.strip():
-                    # Clean CID codes from main text
+                    # Clean CID codes and page headers from main text
                     text = self._remove_cid_codes(text)
-                    page_content.append(text)
+                    text = self._remove_page_headers(text)
+                    if text.strip():  # Only add if there's content left after cleaning
+                        page_content.append(text)
 
                 # Extract tables if enabled
                 if extract_tables:
@@ -122,6 +124,18 @@ class PDFExtractor:
             return ""
         # Remove (cid:xxxx) patterns
         text = re.sub(r'\(cid:\d+\)', '', text)
+        # Clean up any resulting multiple spaces
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
+    def _remove_page_headers(self, text: str) -> str:
+        """Remove common page header/footer artifacts."""
+        if not text:
+            return ""
+        # Remove repeated PART headers like "PPAARRTTII PPAARRTTIIII PPAARRTTIII PPAARRTTIV PPAARRTTV PPAARRTTVI"
+        text = re.sub(r'PPAARRT[TI]+(?:\s+PPAARRT[TI]+)*', '', text)
+        # Remove leftover roman numerals from PART headers (II, III, IV, V, VI, etc.)
+        text = re.sub(r'\b(?:I{1,3}|IV|V|VI{1,3}|IX|X)\s+(?:I{1,3}|IV|V|VI{1,3}|IX|X)\s+(?:I{1,3}|IV|V|VI{1,3}|IX|X)', '', text)
         # Clean up any resulting multiple spaces
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
