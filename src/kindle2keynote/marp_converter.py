@@ -21,18 +21,19 @@ class MarpConverter:
 
         self.client = Anthropic(api_key=self.api_key)
 
-    def convert_to_marp(self, text_content: str, style: str = "default") -> str:
+    def convert_to_marp(self, text_content: str, style: str = "default", language: str = "en") -> str:
         """
         Convert text content to Marp markdown format.
 
         Args:
             text_content: Extracted text from PDF
             style: Presentation style ('default', 'minimal', 'academic')
+            language: Output language ('en' for English, 'ja' for Japanese)
 
         Returns:
             Marp-formatted markdown
         """
-        prompt = self._build_conversion_prompt(text_content, style)
+        prompt = self._build_conversion_prompt(text_content, style, language)
 
         message = self.client.messages.create(
             model="claude-sonnet-4-20250514",
@@ -47,7 +48,7 @@ class MarpConverter:
 
         return message.content[0].text
 
-    def _build_conversion_prompt(self, text_content: str, style: str) -> str:
+    def _build_conversion_prompt(self, text_content: str, style: str, language: str) -> str:
         """Build the prompt for Claude to convert text to Marp."""
         style_instructions = {
             "default": "Use a clean, professional style with good visual hierarchy.",
@@ -55,7 +56,13 @@ class MarpConverter:
             "academic": "Use academic presentation style with clear structure and citations."
         }
 
+        language_instructions = {
+            "en": "Generate the presentation in English.",
+            "ja": "Generate the presentation in Japanese. Translate all content to Japanese while preserving technical terms where appropriate."
+        }
+
         style_guide = style_instructions.get(style, style_instructions["default"])
+        language_guide = language_instructions.get(language, language_instructions["en"])
 
         return f"""Convert the following text extracted from a PDF ebook into a Marp presentation.
 
@@ -68,6 +75,7 @@ Instructions:
 6. Keep slides concise - aim for 5-7 points per slide maximum
 7. Add slide separators (---) between slides
 8. Include a title slide and conclusion slide
+9. {language_guide}
 
 Marp frontmatter should include:
 ```
@@ -95,7 +103,8 @@ Please generate the complete Marp presentation:"""
 def convert_text_to_marp(
     text_content: str,
     output_path: Optional[str] = None,
-    style: str = "default"
+    style: str = "default",
+    language: str = "en"
 ) -> str:
     """
     Convenience function to convert text to Marp format.
@@ -104,12 +113,13 @@ def convert_text_to_marp(
         text_content: Text to convert
         output_path: Optional path to save the Marp file
         style: Presentation style
+        language: Output language ('en' or 'ja')
 
     Returns:
         Marp-formatted markdown
     """
     converter = MarpConverter()
-    marp_content = converter.convert_to_marp(text_content, style=style)
+    marp_content = converter.convert_to_marp(text_content, style=style, language=language)
 
     if output_path:
         converter.save_marp_file(marp_content, output_path)
@@ -121,15 +131,16 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python marp_converter.py <text_file> [output_file] [style]")
+        print("Usage: python marp_converter.py <text_file> [output_file] [style] [language]")
         sys.exit(1)
 
     text_file = sys.argv[1]
     output_file = sys.argv[2] if len(sys.argv) > 2 else None
     style = sys.argv[3] if len(sys.argv) > 3 else "default"
+    language = sys.argv[4] if len(sys.argv) > 4 else "en"
 
     text_content = Path(text_file).read_text(encoding="utf-8")
-    marp_content = convert_text_to_marp(text_content, output_file, style)
+    marp_content = convert_text_to_marp(text_content, output_file, style, language)
 
     if not output_file:
         print(marp_content)

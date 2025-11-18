@@ -42,11 +42,17 @@ python main.py input.pdf output.md
 uv run main.py input.pdf output.md --style minimal
 uv run main.py input.pdf output.md --style academic
 
+# Generate slides in Japanese
+uv run main.py input.pdf output.md --language ja
+
 # Extract specific page range (recommended for better table/image detection)
 uv run main.py input.pdf output.md --page-range 10-50
 
 # Use pdfplumber for better table extraction (default)
 uv run main.py input.pdf output.md --extraction-method pdfplumber
+
+# Combine options
+uv run main.py input.pdf output.md --page-range 84-119 --language ja --style default
 ```
 
 ## Project Structure

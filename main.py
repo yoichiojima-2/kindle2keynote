@@ -45,6 +45,12 @@ def main():
         "--page-range",
         help="Page range to extract (e.g., '66-100' or '10-20')"
     )
+    parser.add_argument(
+        "--language",
+        choices=["en", "ja"],
+        default="en",
+        help="Output language for Marp slides (en: English, ja: Japanese, default: en)"
+    )
 
     args = parser.parse_args()
 
@@ -93,9 +99,9 @@ def main():
             print(f"Extracted text saved to: {args.save_text}")
 
         # Step 2: Convert to Marp
-        print(f"Converting to Marp presentation (style: {args.style})...")
+        print(f"Converting to Marp presentation (style: {args.style}, language: {args.language})...")
         converter = MarpConverter()
-        marp_content = converter.convert_to_marp(text_content, style=args.style)
+        marp_content = converter.convert_to_marp(text_content, style=args.style, language=args.language)
 
         # Step 3: Save output
         output_path = Path(args.output_marp)
