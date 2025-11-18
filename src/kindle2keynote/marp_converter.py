@@ -59,16 +59,23 @@ class MarpConverter:
 
         language_instructions = {
             "en": "Generate the presentation in English.",
-            "ja": "Generate the presentation in Japanese. Translate all content to Japanese while preserving technical terms where appropriate."
+            "ja": """Generate the presentation in Japanese. Follow Japanese business presentation style:
+- Create information-dense slides (not minimal talking points)
+- Include comprehensive details, examples, and explanations on slides
+- Preserve all important information from the source
+- Think of slides as a condensed written document, not just visual aids
+- Use detailed bullet points with sub-points and explanations
+- Include concrete examples, data, and specific details on slides
+- Maintain academic/business document quality"""
         }
 
         # Determine detail level based on target slides
         if target_slides <= 15:
-            detail_guide = "Create a concise, high-level overview. Compress information heavily. Focus on key takeaways only."
+            detail_guide = "Cover main concepts comprehensively but fewer topics. Pack significant information into each slide."
         elif target_slides <= 30:
-            detail_guide = "Balance between overview and detail. Include main points and important examples."
+            detail_guide = "Cover most important content with substantial detail. Include explanations, examples, and context. Each slide should be information-rich."
         else:
-            detail_guide = "Create a detailed, comprehensive presentation. Include examples, explanations, and context for each point."
+            detail_guide = "Create a thorough, comprehensive presentation covering nearly all content. Include detailed explanations, multiple examples, specific data, and full context for each point. Preserve as much information from the source as possible."
 
         style_guide = style_instructions.get(style, style_instructions["default"])
         language_guide = language_instructions.get(language, language_instructions["en"])
@@ -76,17 +83,20 @@ class MarpConverter:
         return f"""Convert the following text extracted from a PDF ebook into a Marp presentation.
 
 Instructions:
-1. Create engaging, informative slides from the content
+1. Create comprehensive, information-dense slides that preserve important content
 2. Add proper Marp frontmatter with theme configuration
 3. Break content into logical sections with clear headings
-4. Use bullet points, lists, and formatting effectively
+4. Use detailed bullet points with sub-points and explanations
 5. {style_guide}
-6. Keep slides concise - aim for 5-7 points per slide maximum
-7. Add slide separators (---) between slides
-8. Include a title slide and conclusion slide
-9. {language_guide}
-10. Target approximately {target_slides} slides total (excluding title/conclusion)
-11. {detail_guide}
+6. Include substantial information per slide - aim for detailed coverage not minimal points
+7. Use nested bullet points, numbered lists, and tables to pack information efficiently
+8. Add slide separators (---) between slides
+9. Include a title slide and conclusion slide
+10. {language_guide}
+11. Target approximately {target_slides} slides total (excluding title/conclusion)
+12. {detail_guide}
+13. Preserve specific examples, data points, frameworks, and explanations from source
+14. Each slide should be able to stand alone as reference material
 
 Marp frontmatter should include:
 ```
@@ -100,7 +110,7 @@ paginate: true
 Source text:
 {text_content}
 
-Please generate the complete Marp presentation:"""
+Please generate the complete Marp presentation with comprehensive, detailed content:"""
 
     def save_marp_file(self, marp_content: str, output_path: str) -> None:
         """Save Marp content to a markdown file."""
