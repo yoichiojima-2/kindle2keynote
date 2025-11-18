@@ -131,19 +131,30 @@ class PDFExtractor:
         if not table or len(table) < 2:  # Need at least header + 1 data row
             return False
 
-        # Count non-empty cells
+        # Count non-empty cells and calculate statistics
         non_empty_cells = 0
         total_cells = 0
+        total_text_length = 0
+        non_empty_rows = 0
+        cells_per_row = []
 
         for row in table:
             if row:
+                row_has_content = False
+                row_non_empty = 0
                 for cell in row:
                     total_cells += 1
                     if cell and str(cell).strip():
                         non_empty_cells += 1
+                        total_text_length += len(str(cell).strip())
+                        row_has_content = True
+                        row_non_empty += 1
+                if row_has_content:
+                    non_empty_rows += 1
+                    cells_per_row.append(row_non_empty)
 
-        # Skip if less than 30% of cells have content
-        if total_cells == 0 or (non_empty_cells / total_cells) < 0.3:
+        # Skip if less than 40% of cells have content (increased from 30%)
+        if total_cells == 0 or (non_empty_cells / total_cells) < 0.4:
             return False
 
         # Skip single-column tables (likely page headers/footers)
@@ -153,6 +164,25 @@ class PDFExtractor:
         # Skip tables where first row has single repeated pattern (like PPAARRTTIIII)
         if table[0] and len(set(str(cell).strip() for cell in table[0] if cell)) == 1:
             return False
+
+        # Skip tables with very few rows (need at least 4 rows for meaningful tables)
+        if non_empty_rows < 4:
+            return False
+
+        # Skip tables where average cell content is too short (fragmented text from diagrams)
+        if non_empty_cells > 0:
+            avg_cell_length = total_text_length / non_empty_cells
+            # If average content per cell is less than 15 characters, likely a diagram
+            if avg_cell_length < 15:
+                return False
+
+        # Skip tables with very sparse rows (diagrams have many empty cells per row)
+        if cells_per_row:
+            avg_cells_per_row = sum(cells_per_row) / len(cells_per_row)
+            num_columns = len(table[0]) if table[0] else 0
+            # If on average less than 40% of columns are filled per row, it's likely a diagram
+            if num_columns > 0 and (avg_cells_per_row / num_columns) < 0.4:
+                return False
 
         return True
 
