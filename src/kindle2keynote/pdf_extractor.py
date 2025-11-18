@@ -47,9 +47,9 @@ class PDFExtractor:
                 text = page.get_text("text")
 
                 if text.strip():
-                    text_content.append(f"--- Page {page_num} ---\n{text}")
+                    text_content.append(f"## Page {page_num}\n\n{text}")
 
-        return "\n\n".join(text_content)
+        return "\n\n---\n\n".join(text_content)
 
     def extract_with_pdfplumber(self, page_range: Optional[Tuple[int, int]] = None, extract_tables: bool = True) -> str:
         """
@@ -90,21 +90,23 @@ class PDFExtractor:
                 if extract_tables:
                     tables = page.extract_tables()
                     if tables:
-                        page_content.append("\n[TABLES DETECTED ON THIS PAGE]")
+                        page_content.append("\n### Tables\n")
                         for table_idx, table in enumerate(tables, 1):
                             if table:
-                                page_content.append(f"\n[Table {table_idx}]")
+                                page_content.append(f"**Table {table_idx}:**\n")
                                 page_content.append(self._format_table_as_markdown(table))
+                                page_content.append("")  # Empty line after table
 
                 # Check for images/figures
                 images = page.images
                 if images:
-                    page_content.append(f"\n[IMAGES/FIGURES DETECTED: {len(images)} image(s) on this page]")
+                    page_content.append(f"\n> 📊 **Note:** {len(images)} image(s)/figure(s) on this page\n")
 
                 if page_content:
-                    text_content.append(f"--- Page {page_num} ---\n" + "\n".join(page_content))
+                    # Format as markdown with heading
+                    text_content.append(f"## Page {page_num}\n\n" + "\n".join(page_content))
 
-        return "\n\n".join(text_content)
+        return "\n\n---\n\n".join(text_content)
 
     def _format_table_as_markdown(self, table) -> str:
         """Format extracted table as markdown."""
