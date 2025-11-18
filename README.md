@@ -45,6 +45,10 @@ uv run main.py input.pdf output.md --style academic
 # Generate slides in Japanese
 uv run main.py input.pdf output.md --language ja
 
+# Control number of slides (more slides = more detail)
+uv run main.py input.pdf output.md --slides 30  # More detailed
+uv run main.py input.pdf output.md --slides 10  # More concise
+
 # Extract specific page range (recommended for better table/image detection)
 uv run main.py input.pdf output.md --page-range 10-50
 
@@ -52,7 +56,14 @@ uv run main.py input.pdf output.md --page-range 10-50
 uv run main.py input.pdf output.md --extraction-method pdfplumber
 
 # Combine options
-uv run main.py input.pdf output.md --page-range 84-119 --language ja --style default
+uv run main.py input.pdf output.md --page-range 84-119 --language ja --slides 30
+```
+
+### Slide Density Guide
+
+- `--slides 10-15`: Concise, high-level overview
+- `--slides 20-30`: Balanced detail (default: 20)
+- `--slides 40+`: Comprehensive, detailed presentation
 ```
 
 ## Project Structure

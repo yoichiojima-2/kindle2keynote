@@ -21,7 +21,7 @@ class MarpConverter:
 
         self.client = Anthropic(api_key=self.api_key)
 
-    def convert_to_marp(self, text_content: str, style: str = "default", language: str = "en") -> str:
+    def convert_to_marp(self, text_content: str, style: str = "default", language: str = "en", target_slides: int = 20) -> str:
         """
         Convert text content to Marp markdown format.
 
@@ -29,11 +29,12 @@ class MarpConverter:
             text_content: Extracted text from PDF
             style: Presentation style ('default', 'minimal', 'academic')
             language: Output language ('en' for English, 'ja' for Japanese)
+            target_slides: Target number of slides (default: 20, controls detail level)
 
         Returns:
             Marp-formatted markdown
         """
-        prompt = self._build_conversion_prompt(text_content, style, language)
+        prompt = self._build_conversion_prompt(text_content, style, language, target_slides)
 
         message = self.client.messages.create(
             model="claude-sonnet-4-20250514",
@@ -48,7 +49,7 @@ class MarpConverter:
 
         return message.content[0].text
 
-    def _build_conversion_prompt(self, text_content: str, style: str, language: str) -> str:
+    def _build_conversion_prompt(self, text_content: str, style: str, language: str, target_slides: int) -> str:
         """Build the prompt for Claude to convert text to Marp."""
         style_instructions = {
             "default": "Use a clean, professional style with good visual hierarchy.",
@@ -60,6 +61,14 @@ class MarpConverter:
             "en": "Generate the presentation in English.",
             "ja": "Generate the presentation in Japanese. Translate all content to Japanese while preserving technical terms where appropriate."
         }
+
+        # Determine detail level based on target slides
+        if target_slides <= 15:
+            detail_guide = "Create a concise, high-level overview. Compress information heavily. Focus on key takeaways only."
+        elif target_slides <= 30:
+            detail_guide = "Balance between overview and detail. Include main points and important examples."
+        else:
+            detail_guide = "Create a detailed, comprehensive presentation. Include examples, explanations, and context for each point."
 
         style_guide = style_instructions.get(style, style_instructions["default"])
         language_guide = language_instructions.get(language, language_instructions["en"])
@@ -76,6 +85,8 @@ Instructions:
 7. Add slide separators (---) between slides
 8. Include a title slide and conclusion slide
 9. {language_guide}
+10. Target approximately {target_slides} slides total (excluding title/conclusion)
+11. {detail_guide}
 
 Marp frontmatter should include:
 ```
@@ -104,7 +115,8 @@ def convert_text_to_marp(
     text_content: str,
     output_path: Optional[str] = None,
     style: str = "default",
-    language: str = "en"
+    language: str = "en",
+    target_slides: int = 20
 ) -> str:
     """
     Convenience function to convert text to Marp format.
@@ -114,12 +126,13 @@ def convert_text_to_marp(
         output_path: Optional path to save the Marp file
         style: Presentation style
         language: Output language ('en' or 'ja')
+        target_slides: Target number of slides (default: 20)
 
     Returns:
         Marp-formatted markdown
     """
     converter = MarpConverter()
-    marp_content = converter.convert_to_marp(text_content, style=style, language=language)
+    marp_content = converter.convert_to_marp(text_content, style=style, language=language, target_slides=target_slides)
 
     if output_path:
         converter.save_marp_file(marp_content, output_path)
@@ -131,16 +144,17 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python marp_converter.py <text_file> [output_file] [style] [language]")
+        print("Usage: python marp_converter.py <text_file> [output_file] [style] [language] [target_slides]")
         sys.exit(1)
 
     text_file = sys.argv[1]
     output_file = sys.argv[2] if len(sys.argv) > 2 else None
     style = sys.argv[3] if len(sys.argv) > 3 else "default"
     language = sys.argv[4] if len(sys.argv) > 4 else "en"
+    target_slides = int(sys.argv[5]) if len(sys.argv) > 5 else 20
 
     text_content = Path(text_file).read_text(encoding="utf-8")
-    marp_content = convert_text_to_marp(text_content, output_file, style, language)
+    marp_content = convert_text_to_marp(text_content, output_file, style, language, target_slides)
 
     if not output_file:
         print(marp_content)

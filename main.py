@@ -51,6 +51,12 @@ def main():
         default="en",
         help="Output language for Marp slides (en: English, ja: Japanese, default: en)"
     )
+    parser.add_argument(
+        "--slides",
+        type=int,
+        default=20,
+        help="Target number of slides (default: 20, more slides = more detail)"
+    )
 
     args = parser.parse_args()
 
@@ -99,9 +105,9 @@ def main():
             print(f"Extracted text saved to: {args.save_text}")
 
         # Step 2: Convert to Marp
-        print(f"Converting to Marp presentation (style: {args.style}, language: {args.language})...")
+        print(f"Converting to Marp presentation (style: {args.style}, language: {args.language}, target slides: {args.slides})...")
         converter = MarpConverter()
-        marp_content = converter.convert_to_marp(text_content, style=args.style, language=args.language)
+        marp_content = converter.convert_to_marp(text_content, style=args.style, language=args.language, target_slides=args.slides)
 
         # Step 3: Save output
         output_path = Path(args.output_marp)
