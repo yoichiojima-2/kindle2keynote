@@ -24,6 +24,11 @@ wheels/
 venv/
 env/
 ENV/
+.venv/
+
+# uv
+.python-version
+uv.lock
 
 # Environment variables
 .env

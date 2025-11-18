@@ -11,8 +11,10 @@ Convert PDF ebooks into Marp presentation slides using AI.
 ## Installation
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Install dependencies with uv (recommended)
+uv sync
+
+# Or with pip
 pip install -r requirements.txt
 ```
 
@@ -27,11 +29,21 @@ ANTHROPIC_API_KEY=your_api_key_here
 ## Usage
 
 ```bash
+# With uv
+uv run main.py input.pdf output.md
+
+# Or directly (after uv sync)
 python main.py input.pdf output.md
+
+# With different styles
+uv run main.py input.pdf output.md --style minimal
+uv run main.py input.pdf output.md --style academic
 ```
 
 ## Project Structure
 
-- `pdf_extractor.py` - PDF text extraction utilities
-- `marp_converter.py` - LLM-based Marp conversion
+- `src/kindle2keynote/` - Main package
+  - `pdf_extractor.py` - PDF text extraction utilities
+  - `marp_converter.py` - LLM-based Marp conversion
 - `main.py` - CLI entry point
+- `pyproject.toml` - uv/pip configuration
