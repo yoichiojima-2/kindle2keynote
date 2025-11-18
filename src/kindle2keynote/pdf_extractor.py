@@ -5,7 +5,7 @@ High-quality PDF text extraction using PyMuPDF.
 import fitz  # PyMuPDF
 import pdfplumber
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 
 class PDFExtractor:
@@ -16,15 +16,33 @@ class PDFExtractor:
         if not self.pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
-    def extract_with_pymupdf(self) -> str:
+    def extract_with_pymupdf(self, page_range: Optional[Tuple[int, int]] = None) -> str:
         """
         Extract text using PyMuPDF (primary method).
         Fast and accurate for most digital PDFs.
+
+        Args:
+            page_range: Optional tuple of (start_page, end_page) (1-indexed, inclusive)
         """
         text_content = []
 
         with fitz.open(self.pdf_path) as doc:
-            for page_num, page in enumerate(doc, start=1):
+            total_pages = len(doc)
+
+            # Determine page range
+            if page_range:
+                start_page, end_page = page_range
+                # Convert to 0-indexed and validate
+                start_idx = max(0, start_page - 1)
+                end_idx = min(total_pages, end_page)
+            else:
+                start_idx = 0
+                end_idx = total_pages
+
+            for page_idx in range(start_idx, end_idx):
+                page = doc[page_idx]
+                page_num = page_idx + 1
+
                 # Extract text while preserving layout
                 text = page.get_text("text")
 
@@ -33,15 +51,32 @@ class PDFExtractor:
 
         return "\n\n".join(text_content)
 
-    def extract_with_pdfplumber(self) -> str:
+    def extract_with_pdfplumber(self, page_range: Optional[Tuple[int, int]] = None) -> str:
         """
         Extract text using pdfplumber (fallback method).
         Better for complex layouts and tables.
+
+        Args:
+            page_range: Optional tuple of (start_page, end_page) (1-indexed, inclusive)
         """
         text_content = []
 
         with pdfplumber.open(self.pdf_path) as pdf:
-            for page_num, page in enumerate(pdf.pages, start=1):
+            total_pages = len(pdf.pages)
+
+            # Determine page range
+            if page_range:
+                start_page, end_page = page_range
+                # Convert to 0-indexed and validate
+                start_idx = max(0, start_page - 1)
+                end_idx = min(total_pages, end_page)
+            else:
+                start_idx = 0
+                end_idx = total_pages
+
+            for page_idx in range(start_idx, end_idx):
+                page = pdf.pages[page_idx]
+                page_num = page_idx + 1
                 text = page.extract_text()
 
                 if text and text.strip():
@@ -49,12 +84,13 @@ class PDFExtractor:
 
         return "\n\n".join(text_content)
 
-    def extract(self, method: str = "auto") -> str:
+    def extract(self, method: str = "auto", page_range: Optional[Tuple[int, int]] = None) -> str:
         """
         Extract text from PDF using the specified method.
 
         Args:
             method: 'pymupdf', 'pdfplumber', or 'auto' (default)
+            page_range: Optional tuple of (start_page, end_page) (1-indexed, inclusive)
 
         Returns:
             Extracted text content
@@ -62,7 +98,7 @@ class PDFExtractor:
         if method == "auto":
             # Try PyMuPDF first (faster)
             try:
-                text = self.extract_with_pymupdf()
+                text = self.extract_with_pymupdf(page_range=page_range)
                 if text.strip():
                     return text
             except Exception as e:
@@ -70,7 +106,7 @@ class PDFExtractor:
 
             # Fallback to pdfplumber
             try:
-                text = self.extract_with_pdfplumber()
+                text = self.extract_with_pdfplumber(page_range=page_range)
                 if text.strip():
                     return text
             except Exception as e:
@@ -79,17 +115,17 @@ class PDFExtractor:
             raise ValueError("Failed to extract text with all methods")
 
         elif method == "pymupdf":
-            return self.extract_with_pymupdf()
+            return self.extract_with_pymupdf(page_range=page_range)
 
         elif method == "pdfplumber":
-            return self.extract_with_pdfplumber()
+            return self.extract_with_pdfplumber(page_range=page_range)
 
         else:
             raise ValueError(f"Unknown extraction method: {method}")
 
-    def save_extracted_text(self, output_path: str, method: str = "auto") -> None:
+    def save_extracted_text(self, output_path: str, method: str = "auto", page_range: Optional[Tuple[int, int]] = None) -> None:
         """Extract text and save to a file."""
-        text = self.extract(method=method)
+        text = self.extract(method=method, page_range=page_range)
 
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)

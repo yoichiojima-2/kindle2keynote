@@ -11,6 +11,12 @@ dependencies = [
     "python-dotenv>=1.0.0",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+]
+
 [project.scripts]
 kindle2keynote = "main:main"
 

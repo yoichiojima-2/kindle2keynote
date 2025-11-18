@@ -41,6 +41,10 @@ def main():
         "--save-text",
         help="Optional path to save extracted text"
     )
+    parser.add_argument(
+        "--page-range",
+        help="Page range to extract (e.g., '66-100' or '10-20')"
+    )
 
     args = parser.parse_args()
 
@@ -55,10 +59,27 @@ def main():
         sys.exit(1)
 
     try:
+        # Parse page range if provided
+        page_range = None
+        if args.page_range:
+            try:
+                parts = args.page_range.split('-')
+                if len(parts) != 2:
+                    raise ValueError("Page range must be in format 'start-end'")
+                start_page = int(parts[0].strip())
+                end_page = int(parts[1].strip())
+                if start_page < 1 or end_page < start_page:
+                    raise ValueError("Invalid page range")
+                page_range = (start_page, end_page)
+                print(f"Extracting pages {start_page}-{end_page}")
+            except ValueError as e:
+                print(f"Error: Invalid page range format: {e}", file=sys.stderr)
+                sys.exit(1)
+
         # Step 1: Extract text from PDF
         print(f"Extracting text from PDF: {args.input_pdf}")
         extractor = PDFExtractor(args.input_pdf)
-        text_content = extractor.extract(method=args.extraction_method)
+        text_content = extractor.extract(method=args.extraction_method, page_range=page_range)
 
         if not text_content.strip():
             print("Error: No text could be extracted from the PDF", file=sys.stderr)

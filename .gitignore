@@ -47,3 +47,6 @@ extracted_text/
 
 # Test files
 test_pdfs/
+
+# books
+assets/books/**
