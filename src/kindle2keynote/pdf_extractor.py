@@ -82,9 +82,11 @@ class PDFExtractor:
 
                 page_content = []
 
-                # Extract regular text
-                text = page.extract_text()
+                # Extract regular text with layout preservation for better character mapping
+                text = page.extract_text(layout=True, x_tolerance=2, y_tolerance=2)
                 if text and text.strip():
+                    # Clean CID codes from main text
+                    text = self._remove_cid_codes(text)
                     page_content.append(text)
 
                 # Extract tables if enabled
@@ -109,12 +111,24 @@ class PDFExtractor:
 
         return "\n\n---\n\n".join(text_content)
 
+    def _remove_cid_codes(self, text: str) -> str:
+        """Remove CID codes that appear in poorly encoded PDFs."""
+        if not text:
+            return ""
+        # Remove (cid:xxxx) patterns
+        text = re.sub(r'\(cid:\d+\)', '', text)
+        # Clean up any resulting multiple spaces
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
     def _clean_cell_text(self, cell) -> str:
         """Clean and normalize cell text."""
         if cell is None:
             return ""
 
         text = str(cell)
+        # Remove CID codes
+        text = self._remove_cid_codes(text)
         # Replace newlines with spaces
         text = text.replace('\n', ' ')
         # Replace multiple spaces with single space
