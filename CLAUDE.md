@@ -15,3 +15,4 @@ Convert PDF ebooks into Marp presentation slides using AI.
 - Use `uv` for dependency management
 - Commit and push regularly
 - Maintain clean code structure in `src/kindle2keynote/`
+- **Tests are always required** - write tests for all new features and bug fixes
