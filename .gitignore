@@ -48,5 +48,5 @@ extracted_text/
 # Test files
 test_pdfs/
 
-# books
-assets/books/**node_modules/
+assets/**
+node_modules
