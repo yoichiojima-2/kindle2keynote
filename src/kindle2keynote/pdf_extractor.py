@@ -93,9 +93,14 @@ class PDFExtractor:
                 if extract_tables:
                     tables = page.extract_tables()
                     if tables:
-                        page_content.append("\n### Tables\n")
-                        for table_idx, table in enumerate(tables, 1):
-                            if table:
+                        valid_tables = []
+                        for table in tables:
+                            if table and self._is_valid_table(table):
+                                valid_tables.append(table)
+
+                        if valid_tables:
+                            page_content.append("\n### Tables\n")
+                            for table_idx, table in enumerate(valid_tables, 1):
                                 page_content.append(f"**Table {table_idx}:**\n")
                                 page_content.append(self._format_table_as_markdown(table))
                                 page_content.append("")  # Empty line after table
@@ -120,6 +125,36 @@ class PDFExtractor:
         # Clean up any resulting multiple spaces
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
+
+    def _is_valid_table(self, table) -> bool:
+        """Check if a table is valid and worth extracting."""
+        if not table or len(table) < 2:  # Need at least header + 1 data row
+            return False
+
+        # Count non-empty cells
+        non_empty_cells = 0
+        total_cells = 0
+
+        for row in table:
+            if row:
+                for cell in row:
+                    total_cells += 1
+                    if cell and str(cell).strip():
+                        non_empty_cells += 1
+
+        # Skip if less than 30% of cells have content
+        if total_cells == 0 or (non_empty_cells / total_cells) < 0.3:
+            return False
+
+        # Skip single-column tables (likely page headers/footers)
+        if table[0] and len(table[0]) == 1:
+            return False
+
+        # Skip tables where first row has single repeated pattern (like PPAARRTTIIII)
+        if table[0] and len(set(str(cell).strip() for cell in table[0] if cell)) == 1:
+            return False
+
+        return True
 
     def _clean_cell_text(self, cell) -> str:
         """Clean and normalize cell text."""
