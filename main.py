@@ -57,6 +57,12 @@ def main():
         default=20,
         help="Target number of slides (default: 20, more slides = more detail)"
     )
+    parser.add_argument(
+        "--provider",
+        choices=["anthropic", "openai", "gemini"],
+        default="anthropic",
+        help="LLM provider (default: anthropic)"
+    )
 
     args = parser.parse_args()
 
@@ -105,8 +111,8 @@ def main():
             print(f"Extracted text saved to: {args.save_text}")
 
         # Step 2: Convert to Marp
-        print(f"Converting to Marp presentation (style: {args.style}, language: {args.language}, target slides: {args.slides})...")
-        converter = MarpConverter()
+        print(f"Converting to Marp presentation (style: {args.style}, language: {args.language}, target slides: {args.slides}, provider: {args.provider})...")
+        converter = MarpConverter(provider=args.provider)
         marp_content = converter.convert_to_marp(text_content, style=args.style, language=args.language, target_slides=args.slides)
 
         # Step 3: Save output

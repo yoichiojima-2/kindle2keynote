@@ -9,6 +9,9 @@ dependencies = [
     "pdfplumber>=0.11.0",
     "anthropic>=0.39.0",
     "python-dotenv>=1.0.0",
+    "openai>=2.8.1",
+    "google-generativeai>=0.8.5",
+    "google-genai>=1.51.0",
 ]
 
 [dependency-groups]

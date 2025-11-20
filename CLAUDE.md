@@ -12,7 +12,7 @@ Convert PDF ebooks into Marp presentation slides using AI.
 
 ## current work
 
-- Target book: `assets/books/the-complete-book-of-product-management.pdf` (pages 84-119)
+- Target book: `assets/books/the-complete-book-of-product-management.pdf` (pages 84-107)
 - Note: PDF page numbers include index/front matter, so actual content pages differ from PDF page numbers
 
 ## development guidelines
