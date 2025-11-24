@@ -40,13 +40,17 @@ uv.lock
 *.swp
 *.swo
 
-# Output files
+# node stuff
+node_modules
+
+# claude stuff
+CLAUDE.md
+.claude
+
+# app
 output/
 *.marp
 extracted_text/
-
-# Test files
 test_pdfs/
-
 assets/**
-node_modules
+
