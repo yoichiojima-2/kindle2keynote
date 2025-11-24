@@ -9,6 +9,7 @@ Usage:
 import argparse
 import sys
 from pathlib import Path
+
 from kindle2keynote.pdf_extractor import PDFExtractor
 from kindle2keynote.marp_converter import MarpConverter
 

@@ -40,6 +40,12 @@ uv.lock
 *.swp
 *.swo
 
+# mypy
+.mypy_cache/
+
+# pytest
+.pytest_cache/
+
 # node stuff
 node_modules
 
@@ -53,4 +59,3 @@ output/
 extracted_text/
 test_pdfs/
 assets/**
-
