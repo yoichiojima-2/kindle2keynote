@@ -1,5 +1,5 @@
 [project]
-name = "kindle2keynote"
+name = "pdf2keynote"
 version = "0.1.0"
 description = "Convert PDF ebooks to Marp presentation slides using AI"
 readme = "README.md"
@@ -12,6 +12,8 @@ dependencies = [
     "openai>=2.8.1",
     "google-generativeai>=0.8.5",
     "google-genai>=1.51.0",
+    "pydantic>=2.12.4",
+    "pydantic-settings>=2.12.0",
 ]
 
 [dependency-groups]
@@ -21,10 +23,10 @@ dev = [
 ]
 
 [project.scripts]
-kindle2keynote = "main:main"
+pdf2keynote = "pdf2keynote.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/kindle2keynote"]
+packages = ["src/pdf2keynote"]
 
 [build-system]
 requires = ["hatchling"]

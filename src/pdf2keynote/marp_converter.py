@@ -2,15 +2,16 @@
 Convert extracted text to Marp presentation format using LLM providers.
 """
 
-import os
+import logging
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
-from dotenv import load_dotenv
+from pdf2keynote.config import settings
+from pdf2keynote.exceptions import ProviderError, ConversionError
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 class LLMProvider(ABC):
@@ -28,9 +29,9 @@ class AnthropicProvider(LLMProvider):
     def __init__(self, api_key: Optional[str] = None):
         from anthropic import Anthropic
 
-        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        self.api_key = api_key or settings.anthropic_api_key
         if not self.api_key:
-            raise ValueError("ANTHROPIC_API_KEY not found in environment")
+            raise ProviderError("ANTHROPIC_API_KEY not found in environment")
         self.client = Anthropic(api_key=self.api_key)
 
     def generate(self, prompt: str, max_tokens: int = 32000) -> str:
@@ -43,7 +44,7 @@ class AnthropicProvider(LLMProvider):
             try:
                 full_response = ""
                 with self.client.messages.stream(
-                    model="claude-sonnet-4-20250514",
+                    model="claude-3-5-sonnet-latest",
                     max_tokens=max_tokens,
                     messages=[{"role": "user", "content": prompt}]
                 ) as stream:
@@ -54,10 +55,11 @@ class AnthropicProvider(LLMProvider):
             except APIStatusError as e:
                 if "overloaded" in str(e).lower() and attempt < max_retries - 1:
                     delay = base_delay * (2 ** attempt)
-                    print(f"API overloaded, retrying in {delay} seconds... (attempt {attempt + 1}/{max_retries})")
+                    logger.warning(f"API overloaded, retrying in {delay} seconds... (attempt {attempt + 1}/{max_retries})")
                     time.sleep(delay)
                 else:
-                    raise
+                    raise ProviderError(f"Anthropic API error: {e}") from e
+        return ""
 
 
 class OpenAIProvider(LLMProvider):
@@ -66,20 +68,23 @@ class OpenAIProvider(LLMProvider):
     def __init__(self, api_key: Optional[str] = None):
         from openai import OpenAI
 
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = api_key or settings.openai_api_key
         if not self.api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment")
+            raise ProviderError("OPENAI_API_KEY not found in environment")
         self.client = OpenAI(api_key=self.api_key)
 
     def generate(self, prompt: str, max_tokens: int = 32000) -> str:
         # GPT-4o supports max 16384 completion tokens
         openai_max_tokens = min(max_tokens, 16384)
-        response = self.client.chat.completions.create(
-            model="gpt-4o",
-            max_tokens=openai_max_tokens,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.choices[0].message.content or ""
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o",
+                max_tokens=openai_max_tokens,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message.content or ""
+        except Exception as e:
+            raise ProviderError(f"OpenAI API error: {e}") from e
 
 
 class GeminiProvider(LLMProvider):
@@ -88,22 +93,25 @@ class GeminiProvider(LLMProvider):
     def __init__(self, api_key: Optional[str] = None):
         from google import genai
 
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.api_key = api_key or settings.gemini_api_key
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment")
+            raise ProviderError("GEMINI_API_KEY not found in environment")
         self.client = genai.Client(api_key=self.api_key)
 
     def generate(self, prompt: str, max_tokens: int = 32000) -> str:
         from google.genai import types
 
-        response = self.client.models.generate_content(
-            model="gemini-3-pro-preview",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                max_output_tokens=max_tokens
+        try:
+            response = self.client.models.generate_content(
+                model="gemini-2.0-flash-exp",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    max_output_tokens=max_tokens
+                )
             )
-        )
-        return response.text or ""
+            return response.text or ""
+        except Exception as e:
+            raise ProviderError(f"Gemini API error: {e}") from e
 
 
 class MarpConverter:
@@ -114,9 +122,10 @@ class MarpConverter:
         Initialize the converter with specified provider.
 
         Args:
-            provider: LLM provider ('anthropic' or 'openai')
+            provider: LLM provider ('anthropic', 'openai', or 'gemini')
             api_key: Optional API key (uses env var if not provided)
         """
+        self.provider_name = provider
         if provider == "anthropic":
             self.llm = AnthropicProvider(api_key)
         elif provider == "openai":
@@ -139,9 +148,12 @@ class MarpConverter:
         Returns:
             Marp-formatted markdown
         """
-        prompt = self._build_conversion_prompt(text_content, style, language, target_slides)
-        result = self.llm.generate(prompt)
-        return self._clean_response(result)
+        try:
+            prompt = self._build_conversion_prompt(text_content, style, language, target_slides)
+            result = self.llm.generate(prompt)
+            return self._clean_response(result)
+        except Exception as e:
+            raise ConversionError(f"Conversion failed: {e}") from e
 
     def _clean_response(self, content: str) -> str:
         """Clean LLM response by removing code blocks and extra text."""
@@ -161,7 +173,6 @@ class MarpConverter:
             content = content[frontmatter_start:]
 
         # Remove any trailing explanation text after the last slide
-        # Look for common patterns that indicate end of presentation
         lines = content.rstrip().split('\n')
         while lines and not lines[-1].strip().startswith('-->') and not lines[-1].strip().startswith('---') and lines[-1].strip() and not lines[-1].strip().startswith('#') and not lines[-1].strip().startswith('-'):
             if 'presentation' in lines[-1].lower() or 'slide' in lines[-1].lower() or 'This ' in lines[-1]:
@@ -267,13 +278,13 @@ Source text:
 
 IMPORTANT: Output ONLY the raw Marp markdown content. Do NOT wrap it in code blocks (no ```markdown or ```). Do NOT include any explanation or commentary before or after the Marp content. Start directly with the --- frontmatter."""
 
-    def save_marp_file(self, marp_content: str, output_path: str) -> None:
+    def save_marp_file(self, marp_content: str, output_path: str | Path) -> None:
         """Save Marp content to a markdown file."""
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
         output_file.write_text(marp_content, encoding="utf-8")
 
-        print(f"Marp presentation saved to: {output_path}")
+        logger.info(f"Marp presentation saved to: {output_path}")
 
 
 def convert_text_to_marp(
@@ -293,7 +304,7 @@ def convert_text_to_marp(
         style: Presentation style
         language: Output language ('en' or 'ja')
         target_slides: Target number of slides (default: 20)
-        provider: LLM provider ('anthropic' or 'openai')
+        provider: LLM provider ('anthropic', 'openai', or 'gemini')
 
     Returns:
         Marp-formatted markdown
@@ -305,24 +316,3 @@ def convert_text_to_marp(
         converter.save_marp_file(marp_content, output_path)
 
     return marp_content
-
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) < 2:
-        print("Usage: python marp_converter.py <text_file> [output_file] [style] [language] [target_slides] [provider]")
-        sys.exit(1)
-
-    text_file = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else None
-    style = sys.argv[3] if len(sys.argv) > 3 else "default"
-    language = sys.argv[4] if len(sys.argv) > 4 else "en"
-    target_slides = int(sys.argv[5]) if len(sys.argv) > 5 else 20
-    provider = sys.argv[6] if len(sys.argv) > 6 else "anthropic"
-
-    text_content = Path(text_file).read_text(encoding="utf-8")
-    marp_content = convert_text_to_marp(text_content, output_file, style, language, target_slides, provider)
-
-    if not output_file:
-        print(marp_content)

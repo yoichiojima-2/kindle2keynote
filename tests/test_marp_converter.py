@@ -3,7 +3,9 @@
 import pytest
 import os
 from pathlib import Path
-from kindle2keynote.marp_converter import MarpConverter, convert_text_to_marp
+from pdf2keynote.marp_converter import MarpConverter, convert_text_to_marp
+from pdf2keynote.exceptions import ProviderError
+from pdf2keynote.config import settings
 
 
 class TestMarpConverter:
@@ -31,7 +33,7 @@ Strategic planning is important.
     def converter(self):
         """Fixture providing a MarpConverter instance."""
         # Check for API key
-        api_key = os.getenv("ANTHROPIC_API_KEY")
+        api_key = settings.anthropic_api_key
         if not api_key:
             pytest.skip("ANTHROPIC_API_KEY not set")
         return MarpConverter(api_key=api_key)
@@ -39,16 +41,16 @@ Strategic planning is important.
     def test_api_key_required(self):
         """Test that API key is required."""
         # Temporarily unset the env var
-        original = os.environ.pop("ANTHROPIC_API_KEY", None)
+        original = settings.anthropic_api_key
+        settings.anthropic_api_key = None
         try:
-            with pytest.raises(ValueError, match="ANTHROPIC_API_KEY"):
+            with pytest.raises(ProviderError, match="ANTHROPIC_API_KEY"):
                 MarpConverter()
         finally:
-            if original:
-                os.environ["ANTHROPIC_API_KEY"] = original
+            settings.anthropic_api_key = original
 
     @pytest.mark.skipif(
-        not os.getenv("ANTHROPIC_API_KEY"),
+        not settings.anthropic_api_key,
         reason="ANTHROPIC_API_KEY not set"
     )
     def test_convert_to_marp(self, converter, sample_text):
@@ -62,7 +64,7 @@ Strategic planning is important.
         assert "---" in result
 
     @pytest.mark.skipif(
-        not os.getenv("ANTHROPIC_API_KEY"),
+        not settings.anthropic_api_key,
         reason="ANTHROPIC_API_KEY not set"
     )
     def test_different_styles(self, converter, sample_text):
@@ -74,7 +76,7 @@ Strategic planning is important.
 
     def test_save_marp_file(self, converter, sample_text, tmp_path):
         """Test saving Marp content to file."""
-        if not os.getenv("ANTHROPIC_API_KEY"):
+        if not settings.anthropic_api_key:
             pytest.skip("ANTHROPIC_API_KEY not set")
 
         output_path = tmp_path / "test_output.md"
@@ -86,7 +88,7 @@ Strategic planning is important.
         assert content == marp_content
 
     @pytest.mark.skipif(
-        not os.getenv("ANTHROPIC_API_KEY"),
+        not settings.anthropic_api_key,
         reason="ANTHROPIC_API_KEY not set"
     )
     def test_convenience_function(self, sample_text):

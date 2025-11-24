@@ -1,17 +1,29 @@
 #!/usr/bin/env python3
 """
-kindle2keynote - Convert PDF ebooks to Marp presentations
+pdf2keynote - Convert PDF ebooks to Marp presentations
 
 Usage:
     python main.py input.pdf output.md [--style default|minimal|academic]
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
-from kindle2keynote.pdf_extractor import PDFExtractor
-from kindle2keynote.marp_converter import MarpConverter
+from pdf2keynote.config import settings
+from pdf2keynote.exceptions import PDF2KeynoteError
+from pdf2keynote.pdf_extractor import PDFExtractor
+from pdf2keynote.marp_converter import MarpConverter
+import fitz  # PyMuPDF
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -29,8 +41,8 @@ def main():
     parser.add_argument(
         "--style",
         choices=["default", "minimal", "academic"],
-        default="default",
-        help="Presentation style (default: default)"
+        default=settings.default_style,
+        help=f"Presentation style (default: {settings.default_style})"
     )
     parser.add_argument(
         "--extraction-method",
@@ -49,20 +61,20 @@ def main():
     parser.add_argument(
         "--language",
         choices=["en", "ja"],
-        default="en",
-        help="Output language for Marp slides (en: English, ja: Japanese, default: en)"
+        default=settings.default_language,
+        help=f"Output language for Marp slides (en: English, ja: Japanese, default: {settings.default_language})"
     )
     parser.add_argument(
         "--slides",
         type=int,
-        default=20,
-        help="Target number of slides (default: 20, more slides = more detail)"
+        default=settings.default_slides,
+        help=f"Target number of slides (default: {settings.default_slides}, more slides = more detail)"
     )
     parser.add_argument(
         "--provider",
         choices=["anthropic", "openai", "gemini"],
-        default="anthropic",
-        help="LLM provider (default: anthropic)"
+        default=settings.default_provider,
+        help=f"LLM provider (default: {settings.default_provider})"
     )
 
     args = parser.parse_args()
@@ -70,11 +82,11 @@ def main():
     # Validate input file
     input_path = Path(args.input_pdf)
     if not input_path.exists():
-        print(f"Error: Input file not found: {args.input_pdf}", file=sys.stderr)
+        logger.error(f"Input file not found: {args.input_pdf}")
         sys.exit(1)
 
     if input_path.suffix.lower() != ".pdf":
-        print(f"Error: Input file must be a PDF: {args.input_pdf}", file=sys.stderr)
+        logger.error(f"Input file must be a PDF: {args.input_pdf}")
         sys.exit(1)
 
     try:
@@ -90,29 +102,39 @@ def main():
                 if start_page < 1 or end_page < start_page:
                     raise ValueError("Invalid page range")
                 page_range = (start_page, end_page)
-                print(f"Extracting pages {start_page}-{end_page}")
+                logger.info(f"Extracting pages {start_page}-{end_page}")
             except ValueError as e:
-                print(f"Error: Invalid page range format: {e}", file=sys.stderr)
+                logger.error(f"Invalid page range format: {e}")
                 sys.exit(1)
 
+        # Check page count and warn if large
+        try:
+            with fitz.open(input_path) as doc:
+                total_pages = len(doc)
+                if total_pages > 50 and not page_range:
+                    logger.warning(f"PDF has {total_pages} pages. Processing the entire document may be slow.")
+                    logger.warning("Consider using --page-range to extract specific chapters (e.g., --page-range 10-30).")
+        except Exception:
+            pass  # Ignore errors here, let extractor handle it
+
         # Step 1: Extract text from PDF
-        print(f"Extracting text from PDF: {args.input_pdf}")
+        logger.info(f"Extracting text from PDF: {args.input_pdf}")
         extractor = PDFExtractor(args.input_pdf)
         text_content = extractor.extract(method=args.extraction_method, page_range=page_range)
 
         if not text_content.strip():
-            print("Error: No text could be extracted from the PDF", file=sys.stderr)
+            logger.error("No text could be extracted from the PDF")
             sys.exit(1)
 
-        print(f"Successfully extracted {len(text_content)} characters")
+        logger.info(f"Successfully extracted {len(text_content)} characters")
 
         # Optionally save extracted text
         if args.save_text:
             Path(args.save_text).write_text(text_content, encoding="utf-8")
-            print(f"Extracted text saved to: {args.save_text}")
+            logger.info(f"Extracted text saved to: {args.save_text}")
 
         # Step 2: Convert to Marp
-        print(f"Converting to Marp presentation (style: {args.style}, language: {args.language}, target slides: {args.slides}, provider: {args.provider})...")
+        logger.info(f"Converting to Marp presentation (style: {args.style}, language: {args.language}, target slides: {args.slides}, provider: {args.provider})...")
         converter = MarpConverter(provider=args.provider)
         marp_content = converter.convert_to_marp(text_content, style=args.style, language=args.language, target_slides=args.slides)
 
@@ -121,13 +143,16 @@ def main():
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(marp_content, encoding="utf-8")
 
-        print(f"Marp presentation saved to: {args.output_marp}")
+        logger.info(f"Marp presentation saved to: {args.output_marp}")
         print("\nConversion completed successfully!")
         print(f"\nTo view the presentation, use Marp CLI or VS Code with Marp extension:")
         print(f"  marp {args.output_marp}")
 
+    except PDF2KeynoteError as e:
+        logger.error(f"Application error: {e}")
+        sys.exit(1)
     except Exception as e:
-        print(f"Error during conversion: {e}", file=sys.stderr)
+        logger.error(f"Unexpected error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
