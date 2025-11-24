@@ -2,13 +2,18 @@
 High-quality PDF text extraction using PyMuPDF.
 """
 
-import fitz  # PyMuPDF
-import pdfplumber
+import logging
 import re
 from pathlib import Path
 from typing import Optional, Tuple, List
 from dataclasses import dataclass
 
+import fitz  # PyMuPDF
+import pdfplumber
+
+from pdf2keynote.exceptions import PDFExtractionError
+
+logger = logging.getLogger(__name__)
 
 # Table validation constants
 MIN_TABLE_ROWS = 4
@@ -47,7 +52,7 @@ class TableStatistics:
 class PDFExtractor:
     """Extract text from PDF files with high accuracy."""
 
-    def __init__(self, pdf_path: str):
+    def __init__(self, pdf_path: str | Path):
         self.pdf_path = Path(pdf_path)
         if not self.pdf_path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
@@ -82,18 +87,21 @@ class PDFExtractor:
         """
         text_content = []
 
-        with fitz.open(self.pdf_path) as doc:
-            start_idx, end_idx = self._get_page_indices(len(doc), page_range)
+        try:
+            with fitz.open(self.pdf_path) as doc:
+                start_idx, end_idx = self._get_page_indices(len(doc), page_range)
 
-            for page_idx in range(start_idx, end_idx):
-                page = doc[page_idx]
-                page_num = page_idx + 1
+                for page_idx in range(start_idx, end_idx):
+                    page = doc[page_idx]
+                    page_num = page_idx + 1
 
-                # Extract text while preserving layout
-                text = page.get_text("text")
+                    # Extract text while preserving layout
+                    text = page.get_text("text")
 
-                if text.strip():
-                    text_content.append(f"## Page {page_num}\n\n{text}")
+                    if text.strip():
+                        text_content.append(f"## Page {page_num}\n\n{text}")
+        except Exception as e:
+            raise PDFExtractionError(f"PyMuPDF extraction failed: {e}") from e
 
         return "\n\n---\n\n".join(text_content)
 
@@ -108,47 +116,50 @@ class PDFExtractor:
         """
         text_content = []
 
-        with pdfplumber.open(self.pdf_path) as pdf:
-            start_idx, end_idx = self._get_page_indices(len(pdf.pages), page_range)
+        try:
+            with pdfplumber.open(self.pdf_path) as pdf:
+                start_idx, end_idx = self._get_page_indices(len(pdf.pages), page_range)
 
-            for page_idx in range(start_idx, end_idx):
-                page = pdf.pages[page_idx]
-                page_num = page_idx + 1
+                for page_idx in range(start_idx, end_idx):
+                    page = pdf.pages[page_idx]
+                    page_num = page_idx + 1
 
-                page_content = []
+                    page_content = []
 
-                # Extract regular text with layout preservation for better character mapping
-                text = page.extract_text(layout=True, x_tolerance=2, y_tolerance=2)
-                if text and text.strip():
-                    # Clean CID codes and page headers from main text
-                    text = self._clean_text(text)
-                    if text.strip():  # Only add if there's content left after cleaning
-                        page_content.append(text)
+                    # Extract regular text with layout preservation for better character mapping
+                    text = page.extract_text(layout=True, x_tolerance=2, y_tolerance=2)
+                    if text and text.strip():
+                        # Clean CID codes and page headers from main text
+                        text = self._clean_text(text)
+                        if text.strip():  # Only add if there's content left after cleaning
+                            page_content.append(text)
 
-                # Extract tables if enabled
-                if extract_tables:
-                    tables = page.extract_tables()
-                    if tables:
-                        valid_tables = []
-                        for table in tables:
-                            if table and self._is_valid_table(table):
-                                valid_tables.append(table)
+                    # Extract tables if enabled
+                    if extract_tables:
+                        tables = page.extract_tables()
+                        if tables:
+                            valid_tables = []
+                            for table in tables:
+                                if table and self._is_valid_table(table):
+                                    valid_tables.append(table)
 
-                        if valid_tables:
-                            page_content.append("\n### Tables\n")
-                            for table_idx, table in enumerate(valid_tables, 1):
-                                page_content.append(f"**Table {table_idx}:**\n")
-                                page_content.append(self._format_table_as_markdown(table))
-                                page_content.append("")  # Empty line after table
+                            if valid_tables:
+                                page_content.append("\n### Tables\n")
+                                for table_idx, table in enumerate(valid_tables, 1):
+                                    page_content.append(f"**Table {table_idx}:**\n")
+                                    page_content.append(self._format_table_as_markdown(table))
+                                    page_content.append("")  # Empty line after table
 
-                # Check for images/figures
-                images = page.images
-                if images:
-                    page_content.append(f"\n> 📊 **Note:** {len(images)} image(s)/figure(s) on this page\n")
+                    # Check for images/figures
+                    images = page.images
+                    if images:
+                        page_content.append(f"\n> 📊 **Note:** {len(images)} image(s)/figure(s) on this page\n")
 
-                if page_content:
-                    # Format as markdown with heading
-                    text_content.append(f"## Page {page_num}\n\n" + "\n".join(page_content))
+                    if page_content:
+                        # Format as markdown with heading
+                        text_content.append(f"## Page {page_num}\n\n" + "\n".join(page_content))
+        except Exception as e:
+            raise PDFExtractionError(f"pdfplumber extraction failed: {e}") from e
 
         return "\n\n---\n\n".join(text_content)
 
@@ -316,7 +327,7 @@ class PDFExtractor:
                 if text.strip():
                     return text
             except Exception as e:
-                print(f"PyMuPDF extraction failed: {e}")
+                logger.warning(f"PyMuPDF extraction failed: {e}")
 
             # Fallback to pdfplumber
             try:
@@ -324,9 +335,9 @@ class PDFExtractor:
                 if text.strip():
                     return text
             except Exception as e:
-                print(f"pdfplumber extraction failed: {e}")
+                logger.warning(f"pdfplumber extraction failed: {e}")
 
-            raise ValueError("Failed to extract text with all methods")
+            raise PDFExtractionError("Failed to extract text with all methods")
 
         elif method == "pymupdf":
             return self.extract_with_pymupdf(page_range=page_range)
@@ -337,7 +348,7 @@ class PDFExtractor:
         else:
             raise ValueError(f"Unknown extraction method: {method}")
 
-    def save_extracted_text(self, output_path: str, method: str = "auto", page_range: Optional[Tuple[int, int]] = None) -> None:
+    def save_extracted_text(self, output_path: str | Path, method: str = "auto", page_range: Optional[Tuple[int, int]] = None) -> None:
         """Extract text and save to a file."""
         text = self.extract(method=method, page_range=page_range)
 
@@ -345,7 +356,7 @@ class PDFExtractor:
         output_file.parent.mkdir(parents=True, exist_ok=True)
         output_file.write_text(text, encoding="utf-8")
 
-        print(f"Text extracted and saved to: {output_path}")
+        logger.info(f"Text extracted and saved to: {output_path}")
 
 
 def extract_pdf_text(pdf_path: str, output_path: Optional[str] = None) -> str:
@@ -366,19 +377,3 @@ def extract_pdf_text(pdf_path: str, output_path: Optional[str] = None) -> str:
         extractor.save_extracted_text(output_path)
 
     return text
-
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) < 2:
-        print("Usage: python pdf_extractor.py <pdf_file> [output_file]")
-        sys.exit(1)
-
-    pdf_file = sys.argv[1]
-    output_file = sys.argv[2] if len(sys.argv) > 2 else None
-
-    text = extract_pdf_text(pdf_file, output_file)
-
-    if not output_file:
-        print(text)

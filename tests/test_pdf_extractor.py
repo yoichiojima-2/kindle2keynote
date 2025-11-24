@@ -2,7 +2,8 @@
 
 import pytest
 from pathlib import Path
-from kindle2keynote.pdf_extractor import PDFExtractor, extract_pdf_text
+from pdf2keynote.pdf_extractor import PDFExtractor, extract_pdf_text
+from pdf2keynote.exceptions import PDFExtractionError
 
 
 class TestPDFExtractor:
@@ -45,12 +46,12 @@ class TestPDFExtractor:
         text = extractor.extract_with_pymupdf(page_range=(66, 100))
 
         assert text, "Extracted text should not be empty"
-        assert "--- Page 66 ---" in text
-        assert "--- Page 100 ---" in text
+        assert "## Page 66" in text
+        assert "## Page 100" in text
 
         # Verify page 65 and 101 are not included
-        assert "--- Page 65 ---" not in text
-        assert "--- Page 101 ---" not in text
+        assert "## Page 65" not in text
+        assert "## Page 101" not in text
 
     def test_page_range_validation(self, extractor):
         """Test page range boundary conditions."""
@@ -60,8 +61,8 @@ class TestPDFExtractor:
 
         # Extract single page
         text = extractor.extract_with_pymupdf(page_range=(66, 66))
-        assert "--- Page 66 ---" in text
-        assert "--- Page 67 ---" not in text
+        assert "## Page 66" in text
+        assert "## Page 67" not in text
 
     def test_extract_auto_method(self, extractor):
         """Test automatic method selection."""
